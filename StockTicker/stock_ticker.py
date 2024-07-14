@@ -45,7 +45,7 @@ def render_stock_data():
         label="Get Ticker Data",
         type="primary"
       )
-    
+
 
   if submit:
     # print(time_frame)
