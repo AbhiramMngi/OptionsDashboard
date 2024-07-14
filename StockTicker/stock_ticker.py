@@ -14,7 +14,7 @@ TIME_FRAMES_INTERVAL = {
   "Past Year": "1d"
 }
 
-FLAG = True
+
 
 def render_stock_data():
 
@@ -24,6 +24,7 @@ def render_stock_data():
   time_interval = "Date"
   data = yf.download(tickers=ticker_list, period=period, interval=interval)
   data.reset_index(inplace=True)
+  data = process_columns(data, ticker_list, period)
 
   with st.sidebar:
     with st.form("stock_names"):
@@ -44,6 +45,7 @@ def render_stock_data():
         label="Get Ticker Data",
         type="primary"
       )
+    
 
   if submit:
     # print(time_frame)
@@ -55,7 +57,7 @@ def render_stock_data():
 
   if "Date" in data.columns: 
     data["Date"] = data["Date"].dt.date
-    
+
   st.dataframe(
     data[[time_interval, *[f"Price_{i}" for i in ticker_list]]],
     use_container_width=True
@@ -81,15 +83,14 @@ class StockTicker:
 def process_columns(data, tickers, period):
 
   time_interval = "Datetime" if period != "1y" else "Date"
-
+  
   if isinstance(data.columns, pd.MultiIndex): 
     data.columns = ['_'.join(col).strip() if col[0] not in ["Date", "Datetime"] else col[0] for col in data.columns]
   else:
     data.columns = [f"{ticker}_{tickers[0]}" if ticker not in ["Date", "Datetime"] else ticker for ticker in data.columns]
-  
   for i in tickers:
     data[f"Price_{i}"] = (data[f"Low_{i}"] + data[f"High_{i}"])/2
-  print("Ao", [time_interval, *[f"Price_{i}" for i in tickers]], data.columns)
+  # print("Ao", [time_interval, *[f"Price_{i}" for i in tickers]], data.columns)
   # data = data[[time_frame, *[f"Price_{i}" for i in tickers]]]
 
   return data
@@ -106,22 +107,36 @@ def fetch_data(tickers, time_frame):
   return data, period, interval, ticker_list, time_interval
   
 def plot_data(data, period, ticker_list):
-  global FLAG
-  if FLAG: 
-    data = process_columns(data, ticker_list, period)
-    FLAG = False
   time_frame = "Datetime" if period != "1y" else "Date"
+  # st.write(data.shape, time_frame, ticker_list)
+
+  print("heyo", time_frame, data.columns)
   fig = px.line(
     data,
     x = time_frame,
     y = [f"Price_{i}" for i in ticker_list],
-    title = "Stock Prices"
   )
 
   fig.update_layout(
     xaxis_title = time_frame,
     yaxis_title = "Stock Price",
+    legend_title = "Stocks",
+    title= "Price Chart"
+  )
+
+  vol_fig = px.line(
+    data,
+    x = time_frame,
+    y = [f"Volume_{i}" for i in ticker_list],
+    title= "Volume Chart"
+  )
+
+  vol_fig.update_layout(
+    xaxis_title = time_frame,
+    yaxis_title = "Stock Volume",
     legend_title = "Stocks"
   )
-  event = st.plotly_chart(fig, use_container_width= True)
-  event
+
+  st.plotly_chart(fig, use_container_width=True)
+  st.plotly_chart(vol_fig, use_container_width=True)
+
