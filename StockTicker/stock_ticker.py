@@ -8,12 +8,12 @@ TIME_FRAMES_PERIOD = {
   "Past Month": "1mo",
   "Past Year": "1y"
 }
+
 TIME_FRAMES_INTERVAL = {
   "Past Day": "1m",
   "Past Month": "1h",
   "Past Year": "1d"
 }
-
 
 
 def render_stock_data():
