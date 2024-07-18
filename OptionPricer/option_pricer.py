@@ -3,12 +3,14 @@ import pandas as pd
 import yfinance as yf
 import streamlit as st
 import re
-from datetime import date
+from datetime import date, timedelta
 from bs4 import BeautifulSoup
 import requests
 from OptionPricer.black_scholes import BlackScholesPricer
+from OptionPricer.binomial_pricer import BinomialAmericanOptionPricer
 from OptionPricer.utils.utils import PricerInput
 import plotly.express as px
+
 
 securities = [i[0] for i in pd.read_csv('securities.csv').values.tolist()]
 
@@ -39,6 +41,15 @@ def scrape_stock_volatility(sec):
   elements = soup.select(selector)
   return np.float32(elements[0].get_text()[:-1])
 
+def calculate_stock_volatility(sec):
+  sec = extract_security_name(sec)
+  # st.write(st.session_state.expiration_date, sec)
+  days = (st.session_state.expiration_date - date.today()).days
+  # st.write(format_period(days))
+  data = yf.download([sec], period=format_period(days), interval="1d")
+  vol = data["Close"].pct_change().std() * np.sqrt(days)
+  # st.write(vol, data.shape)
+  return vol
 
 def format_period(days):
   if days < 30:
@@ -73,16 +84,13 @@ def fetch_dividend_yield(sec):
   return data.info.get('dividendYield', 0.0)
 
 def render_option_dashboard():
-
-  with st.sidebar:
-    option_style = st.selectbox(
-      "Select Option Style",
-      ("European", "American"),
-      key = "option_style",
-      index=0,
-      placeholder="Select Option Style"
-    )
-
+  option_style = st.selectbox(
+    "Select Option Style",
+    ("European", "American"),
+    key = "option_style",
+    index=0,
+    placeholder="Select Option Style"
+  )
   cols = st.columns(2)
   with cols[0]:
     stock_name = st.selectbox(
@@ -92,7 +100,12 @@ def render_option_dashboard():
       index = 39,
     )
   with cols[1]:
-    expiration_date = st.date_input("Select Expiration Date", key="expiration_date", min_value=pd.Timestamp.now())
+    expiration_date = st.date_input(
+      "Select Expiration Date", 
+      key="expiration_date", 
+      min_value=pd.Timestamp.now(),
+      value= pd.Timestamp(date.today() + timedelta(days=30))
+    )
 
   with st.form("option_pricer"):
     cols = st.columns(2)
@@ -100,8 +113,7 @@ def render_option_dashboard():
       spot_price = st.number_input(
         "Spot Price ($USD)",
         placeholder = "Enter Spot Price",
-        value = fetch_current_price(st.session_state.stock_name),
-        disabled = True
+        value = fetch_current_price(st.session_state.stock_name)
       )
     with cols[1]:
       strike_price = st.number_input(
@@ -136,7 +148,7 @@ def render_option_dashboard():
       min_value = 0.0,
       max_value = 100.0,
       step = 0.01,
-      value = scrape_stock_volatility(st.session_state.stock_name) * 100,
+      value = calculate_stock_volatility(st.session_state.stock_name) * 100,
       key = "volatility",
     )
 
@@ -145,9 +157,13 @@ def render_option_dashboard():
       type = "primary"
     )
     
-  if submit:
+  if submit or st.session_state.flag:
+    st.session_state.flag = False
     if st.session_state.option_style == "European":
       pricer = BlackScholesPricer()
+    if st.session_state.option_style == "American":
+      pricer = BinomialAmericanOptionPricer()
+
     
     pricer_input = PricerInput(
       stock_ticker=stock_name,
@@ -160,30 +176,31 @@ def render_option_dashboard():
     )
 
     summary = pricer.summary(pricer_input)
-    with st.sidebar:
-
-      st.success(f"Call Price: {summary.call_price[13]:.2f}")
-      st.error(f"Put Price: {summary.put_price[13]:.2f}")
-      
-      cols = st.columns(2)
-      with cols[0]:
-        
-        st.metric("Call Delta",f"{summary.greeks.delta_call[13]:.2f}")
-      with cols[1]:
-        st.metric("Put Delta:", f"{summary.greeks.delta_put[13]:.2f}")
-      st.metric("Gamma", f"{summary.greeks.gamma[13]:.2f}")
-      st.metric("Vega", f"{summary.greeks.vega[13]:.2f}")
-      theta_cols = st.columns(2)
-      with theta_cols[0]:
-        st.metric("Call Theta", f"{summary.greeks.theta_call[13]:.2f}")
-      with theta_cols[1]:
-        st.metric("Put Theta:", f"{summary.greeks.theta_put[13]:.2f}")
-
-      rho_cols = st.columns(2)
-      with rho_cols[0]:
-        st.metric("Call Rho", f"{summary.greeks.rho_call[13]:.2f}")
-      with rho_cols[1]:
-        st.metric("Put Rho:", f"{summary.greeks.rho_put[13]:.2f}")
+    cols = st.columns(2)
+    with cols[0]:
+      st.success(f"Call Price: {summary.call_price[10]:.2f}")
+    with cols[1]:
+      cols[1].error(f"Put Price: {summary.put_price[10]:.2f}")
+    
+    new_cols = st.columns(5)
+    with new_cols[0]:
+      st.subheader("Delta")
+      st.metric("Call Delta",f"{summary.greeks.delta_call[10]:.2f}")
+      st.metric("Put Delta:", f"{summary.greeks.delta_put[10]:.2f}")
+    with new_cols[1]:
+      st.subheader("Gamma")
+      st.metric("Gamma", f"{summary.greeks.gamma[10]:.2f}")
+    with new_cols[2]:
+      st.subheader("Vega")
+      st.metric("Vega", f"{summary.greeks.vega[10]:.2f}")
+    with new_cols[3]:
+      st.subheader("Theta")
+      st.metric("Call Theta", f"{summary.greeks.theta_call[10]:.2f}")
+      st.metric("Put Theta:", f"{summary.greeks.theta_put[10]:.2f}")
+    with new_cols[4]:
+      st.subheader("Rho")
+      st.metric("Call Rho", f"{summary.greeks.rho_call[10]:.2f}")
+      st.metric("Put Rho:", f"{summary.greeks.rho_put[10]:.2f}")
 
     df = pd.DataFrame(
       data={
@@ -200,6 +217,26 @@ def render_option_dashboard():
         "Rho Put": summary.greeks.rho_put,
         }
       )
+    df["Strike Price"] = summary.strike_price
+    df["Call Payoff"] = np.maximum(0, df["Spot Price"] - df["Strike Price"]) - df["Call Price"][10]
+    df["Put Payoff"] = np.maximum(0, df["Strike Price"] - df["Spot Price"]) - df["Put Price"][10]
+    
+    call_payoff_fig = px.line(
+      df,
+      x = "Spot Price",
+      y = "Call Payoff",
+      title = f"Call Payoff Over Change in Spot {stock_name}",
+    )
+    st.plotly_chart(call_payoff_fig)
+
+    put_payoff_fig = px.line(
+      df,
+      x = "Spot Price",
+      y = "Put Payoff",
+      title = f"Put Payoff Over Change in Spot {stock_name}",
+    )
+    st.plotly_chart(put_payoff_fig)
+
     fig = px.line(
       df,
       x = "Spot Price",

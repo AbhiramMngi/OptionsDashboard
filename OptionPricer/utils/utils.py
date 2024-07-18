@@ -68,4 +68,4 @@ class PricerInput:
     self.volatility = volatility/100.0
     self.time_to_expiration = (expiration_date - date.today()).days/365
     if self.time_to_expiration == 0:
-      self.time_to_expiration = 1
+      self.time_to_expiration = 1e-2

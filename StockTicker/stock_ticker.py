@@ -26,25 +26,24 @@ def render_stock_data():
   data.reset_index(inplace=True)
   data = process_columns(data, ticker_list, period)
 
-  with st.sidebar:
-    with st.form("stock_names"):
-      tickers = st.text_input(
-        label = "Stock Tickers",
-        value = "",
-        placeholder="AAPL GOOGL",
-      )
+  with st.form("stock_names"):
+    tickers = st.text_input(
+      label = "Stock Tickers",
+      value = "",
+      placeholder="AAPL GOOGL",
+    )
 
-      time_frame = st.selectbox(
-        "Select Time Frame",
-        ("Past Day", "Past Month", "Past Year"),
-        index=None,
-        placeholder="Select Period"
-      )
+    time_frame = st.selectbox(
+      "Select Time Frame",
+      ("Past Day", "Past Month", "Past Year"),
+      index=None,
+      placeholder="Select Period"
+    )
 
-      submit = st.form_submit_button(
-        label="Get Ticker Data",
-        type="primary"
-      )
+    submit = st.form_submit_button(
+      label="Get Ticker Data",
+      type="primary"
+    )
 
 
   if submit:

@@ -7,7 +7,7 @@ class BlackScholesPricer:
     self,
     sec_obj
   ):
-    sec_obj.spot_price = np.arange(sec_obj.spot_price * 0.05, sec_obj.spot_price * 1.95, sec_obj.spot_price * 0.075)
+    sec_obj.spot_price = np.arange(sec_obj.spot_price * 0, sec_obj.spot_price * 2, sec_obj.spot_price * 0.1)
     
     def ds():
       d1 = (np.log(sec_obj.spot_price/sec_obj.strike_price) + (sec_obj.risk_free_rate - sec_obj.dividend_rate + (sec_obj.volatility**2)/2) * sec_obj.time_to_expiration)/(sec_obj.volatility * np.sqrt(sec_obj.time_to_expiration))
@@ -49,8 +49,8 @@ class BlackScholesPricer:
         delta_put,
         gamma,
         vega,
-        theta_call,
-        theta_put,
+        theta_call/365,
+        theta_put/365,
         rho_call,
         rho_put
       )
