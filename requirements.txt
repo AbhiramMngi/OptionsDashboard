@@ -1,0 +1,9 @@
+streamlit
+streamlit-extras
+pandas
+numpy
+plotly
+yfinance
+pip
+bs4
+scipy
