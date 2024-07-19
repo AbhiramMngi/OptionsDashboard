@@ -93,6 +93,7 @@ def render_option_dashboard():
     index=0,
     placeholder="Select Option Style"
   )
+
   cols = st.columns(2)
   with cols[0]:
     stock_name = st.selectbox(
@@ -127,6 +128,7 @@ def render_option_dashboard():
         key = "strike_price" 
       )
     if st.session_state.option_style == ASIAN:
+      st.warning("Greek plots of Asian options are bad approximations using finite differences, could be inaccurate.")
       average_start_date = st.date_input(
         "Average Start Date",
         key = "average_start_date",
