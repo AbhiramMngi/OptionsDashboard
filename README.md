@@ -17,8 +17,6 @@ Find the deployment on streamlit [here](https://optionpricerdashboard.streamlit.
 * Displays the prices and volumes of a stock traded over a specified period of time.
 * **YET TO IMPLEMENT** - volatility charts and analysis.
 
-![Uploading Screenshot 2024-07-19 at 11.39.18 PM.png…]()
-
 ## Option Pricing 
 Contains implementations of different styles of options prices, calculated on real world data and current risk free rates and dividend yields. It also provides customisability in terms of the input variables.
 
