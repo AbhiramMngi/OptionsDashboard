@@ -53,12 +53,14 @@ class PricerInput:
   def __init__(
     self,
     stock_ticker,
+    option_style,
     spot_price,
     strike_price,
     risk_free_rate,
     volatility,
     expiration_date,
-    dividend_rate
+    dividend_rate,
+    average_start_date = None,
   ): 
     self.stock_ticker = stock_ticker
     self.spot_price = spot_price
@@ -68,4 +70,6 @@ class PricerInput:
     self.volatility = volatility/100.0
     self.time_to_expiration = (expiration_date - date.today()).days/365
     if self.time_to_expiration == 0:
-      self.time_to_expiration = 1e-2
+      self.time_to_expiration = 1e-4
+    self.average_start_date = average_start_date
+    self.average_end_date = expiration_date

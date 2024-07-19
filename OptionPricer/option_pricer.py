@@ -86,7 +86,7 @@ def fetch_dividend_yield(sec):
 def render_option_dashboard():
   option_style = st.selectbox(
     "Select Option Style",
-    ("European", "American"),
+    ("European", "American", "Asian (Arithmetic Mean)"),
     key = "option_style",
     index=0,
     placeholder="Select Option Style"
@@ -124,7 +124,12 @@ def render_option_dashboard():
         value = spot_price,
         key = "strike_price" 
       )
-    
+    if st.session_state.option_style == "Asian (Arithmetic Mean)":
+      average_start_date = st.date_input(
+        "Average Start Date",
+        key = "average_start_date",
+        value= pd.Timestamp(date.today())
+      )
     dividend_yield = st.number_input(
       "Dividend Yield (%)",
       min_value = 0.0,
@@ -163,11 +168,14 @@ def render_option_dashboard():
       pricer = BlackScholesPricer()
     if st.session_state.option_style == "American":
       pricer = BinomialAmericanOptionPricer()
+    if st.session_state.option_style == "Asian (Arithmetic Mean)":
+      pricer = MonteCarloAsianOptionPricer()
 
     
     pricer_input = PricerInput(
       option_style=option_style,
       stock_ticker=stock_name,
+      option_style=option_style,
       spot_price=spot_price,
       strike_price=strike_price,
       risk_free_rate=risk_free_rate,
