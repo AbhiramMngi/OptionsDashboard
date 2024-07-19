@@ -8,9 +8,11 @@ from bs4 import BeautifulSoup
 import requests
 from OptionPricer.black_scholes import BlackScholesPricer
 from OptionPricer.binomial_pricer import BinomialAmericanOptionPricer
+from OptionPricer.monte_carlo_pricer import MonteCarloAsianOptionPricer
 from OptionPricer.utils.utils import PricerInput
 import plotly.express as px
 
+ASIAN = "Asian (Arithmetic Mean)"
 
 securities = [i[0] for i in pd.read_csv('securities.csv').values.tolist()]
 
@@ -124,7 +126,7 @@ def render_option_dashboard():
         value = spot_price,
         key = "strike_price" 
       )
-    if st.session_state.option_style == "Asian (Arithmetic Mean)":
+    if st.session_state.option_style == ASIAN:
       average_start_date = st.date_input(
         "Average Start Date",
         key = "average_start_date",
@@ -168,12 +170,11 @@ def render_option_dashboard():
       pricer = BlackScholesPricer()
     if st.session_state.option_style == "American":
       pricer = BinomialAmericanOptionPricer()
-    if st.session_state.option_style == "Asian (Arithmetic Mean)":
+    if st.session_state.option_style == ASIAN:
       pricer = MonteCarloAsianOptionPricer()
 
     
     pricer_input = PricerInput(
-      option_style=option_style,
       stock_ticker=stock_name,
       option_style=option_style,
       spot_price=spot_price,
@@ -182,9 +183,8 @@ def render_option_dashboard():
       volatility=volatility,
       expiration_date=expiration_date,
       dividend_rate=dividend_yield,
-      
+      average_start_date=average_start_date if option_style == ASIAN else None
     )
-
     summary = pricer.summary(pricer_input)
     cols = st.columns(2)
     with cols[0]:
