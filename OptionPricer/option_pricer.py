@@ -94,7 +94,7 @@ def render_option_dashboard():
     placeholder="Select Option Style"
   )
   if option_style == ASIAN:
-    st.warning("Greek plots of Asian options are bad approximations using finite differences, could be inaccurate.")
+    st.warning("Greeks of Asian options are bad approximations using finite differences, could be inaccurate.")
 
   cols = st.columns(2)
   with cols[0]:
