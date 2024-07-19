@@ -166,13 +166,15 @@ def render_option_dashboard():
 
     
     pricer_input = PricerInput(
+      option_style=option_style,
       stock_ticker=stock_name,
       spot_price=spot_price,
       strike_price=strike_price,
       risk_free_rate=risk_free_rate,
       volatility=volatility,
       expiration_date=expiration_date,
-      dividend_rate=dividend_yield
+      dividend_rate=dividend_yield,
+      
     )
 
     summary = pricer.summary(pricer_input)
