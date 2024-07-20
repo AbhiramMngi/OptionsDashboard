@@ -32,6 +32,7 @@ Contains implementations of different styles of options prices, calculated on re
 **Delta**, **Gamma**, **Theta**, **Vega**, **Rho** are Implemented and plotted to view changes with respect to the changes in the price of the given stock. 
 
 **European Options** - Closed form solutions for Greeks
+
 **American and Asian Options** - Finite difference method to calculate the derivatives of the option with respect to input variables.
 
 
