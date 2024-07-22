@@ -1,5 +1,10 @@
 import numpy as np
 from datetime import date
+import re
+import yfinance as yf
+import pandas as pd
+
+securities = [i[0] for i in pd.read_csv('securities.csv').values.tolist()]
 
 class OptionSummary:
   def __init__(
@@ -73,3 +78,49 @@ class PricerInput:
       self.time_to_expiration = 1e-4
     self.average_start_date = average_start_date
     self.average_end_date = expiration_date
+
+
+def extract_security_name(sec):
+  return re.match(r'^(.*) \((.*)\)$', sec).group(2)
+
+def calculate_stock_volatility(sec, days):
+  sec = extract_security_name(sec)
+  data = yf.download([sec], period="5y", interval="1d")
+  vol = pd.DataFrame()
+  vol["vol"] = data["Close"].pct_change().rolling(window=days).std()
+  vol["date"] = data.index
+  return vol
+
+def format_period(days):
+  if days < 30:
+    return "1mo"
+  if days <= 180:
+    return "6mo"
+  else:
+    return "1y"
+
+def fetch_interest_rate():
+  treasury_ticker = "^TNX"
+
+  treasury = yf.Ticker(treasury_ticker)
+  treasury_data = treasury.history(period="1mo")
+  risk_free_rate = treasury_data['Close'].iloc[-1] / 100
+  
+  return risk_free_rate
+
+def fetch_current_price(sec):
+  if sec is None:
+    sec = "Apple Inc. (AAPL)"
+  sec = extract_security_name(sec)
+  data = yf.Ticker(sec)
+  return data.info['previousClose']
+
+def fetch_dividend_yield(sec):
+  if sec is None:
+    sec = "Apple Inc. (AAPL)"
+  sec = extract_security_name(sec)
+  data = yf.Ticker(sec)
+  return data.info.get('dividendYield', 0.0)
+
+def continuous_rate(rate):
+  return np.log(1 + rate)

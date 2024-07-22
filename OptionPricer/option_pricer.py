@@ -9,15 +9,28 @@ import requests
 from OptionPricer.black_scholes import BlackScholesPricer
 from OptionPricer.binomial_pricer import BinomialAmericanOptionPricer
 from OptionPricer.monte_carlo_pricer import MonteCarloAsianOptionPricer
-from OptionPricer.utils.utils import PricerInput
+from utils.utils import PricerInput, extract_security_name, securities, fetch_current_price, fetch_dividend_yield, fetch_interest_rate
 import plotly.express as px
 
 ASIAN = "Asian (Arithmetic Mean)"
+def calc_volatility(sec):
+  sec = extract_security_name(sec)
+  # st.write(st.session_state.expiration_date, sec)
+  days = (st.session_state.expiration_date - date.today()).days
+  # st.write(format_period(days))
+  data = yf.download([sec], period=format_period(days), interval="1d")
+  vol = data["Close"].pct_change().std() * np.sqrt(days)
+  # st.write(vol, data.shape)
+  return vol
 
-securities = [i[0] for i in pd.read_csv('securities.csv').values.tolist()]
+def format_period(days):
+  if days < 30:
+    return "1mo"
+  if days <= 180:
+    return "6mo"
+  else:
+    return "1y"
 
-def extract_security_name(sec):
-  return re.match(r'^(.*) \((.*)\)$', sec).group(2)
 
 def get_window_size(expiry):
   days = (expiry - date.today()).days
@@ -43,47 +56,10 @@ def scrape_stock_volatility(sec):
   elements = soup.select(selector)
   return np.float32(elements[0].get_text()[:-1])
 
-def calculate_stock_volatility(sec):
-  sec = extract_security_name(sec)
-  # st.write(st.session_state.expiration_date, sec)
-  days = (st.session_state.expiration_date - date.today()).days
-  # st.write(format_period(days))
-  data = yf.download([sec], period=format_period(days), interval="1d")
-  vol = data["Close"].pct_change().std() * np.sqrt(days)
-  # st.write(vol, data.shape)
-  return vol
-
-def format_period(days):
-  if days < 30:
-    return "1mo"
-  if days <= 180:
-    return "6mo"
-  else:
-    return "1y"
 
 
-def fetch_interest_rate():
-  treasury_ticker = "^TNX"
 
-  treasury = yf.Ticker(treasury_ticker)
-  treasury_data = treasury.history(period="1mo")
-  risk_free_rate = treasury_data['Close'].iloc[-1] / 100
-  
-  return risk_free_rate
 
-def fetch_current_price(sec):
-  if sec is None:
-    sec = "Apple Inc. (AAPL)"
-  sec = extract_security_name(sec)
-  data = yf.Ticker(sec)
-  return data.info['previousClose']
-
-def fetch_dividend_yield(sec):
-  if sec is None:
-    sec = "Apple Inc. (AAPL)"
-  sec = extract_security_name(sec)
-  data = yf.Ticker(sec)
-  return data.info.get('dividendYield', 0.0)
 
 def render_option_dashboard():
   option_style = st.selectbox(
@@ -159,7 +135,7 @@ def render_option_dashboard():
       min_value = 0.0,
       max_value = 100.0,
       step = 0.01,
-      value = calculate_stock_volatility(st.session_state.stock_name) * 100,
+      value = calc_volatility(st.session_state.stock_name) * 100,
       key = "volatility",
     )
 

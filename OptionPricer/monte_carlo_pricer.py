@@ -1,5 +1,5 @@
 import numpy as np
-from OptionPricer.utils.utils import OptionSummary, Greeks
+from utils.utils import OptionSummary, Greeks
 
 class MonteCarloAsianOptionPricer:
   def summary(

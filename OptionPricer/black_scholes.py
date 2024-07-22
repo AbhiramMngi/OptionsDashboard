@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import norm
-from OptionPricer.utils.utils import OptionSummary, Greeks
+from utils.utils import OptionSummary, Greeks
 
 class BlackScholesPricer:
   def summary(

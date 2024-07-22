@@ -1,5 +1,5 @@
 import numpy as np 
-from OptionPricer.utils.utils import Greeks, OptionSummary
+from utils.utils import Greeks, OptionSummary
 
 class BinomialAmericanOptionPricer:
   def summary(
