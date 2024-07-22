@@ -1,4 +1,4 @@
-# Stock Dashboard
+# Dashboard
 
 A Dashboard to view prices and movements of various assets present on the S&P 500 index and price options of different styles such as :
 
