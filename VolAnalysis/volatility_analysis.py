@@ -1,11 +1,22 @@
+import pandas as pd
 import numpy as np
+import yfinance as yf
 import streamlit as st
 from utils.utils import calculate_stock_volatility, securities, fetch_current_price, fetch_dividend_yield, fetch_interest_rate, continuous_rate, extract_security_name
-from VolAnalysis.data_analysis import fetch_option_data, calculate_implied_volatility
+from VolAnalysis.data_analysis import fetch_option_data
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy.interpolate import griddata
 
+
+def calculate_historical_volatility(sec, days):
+  # days = 252 * 5
+  sec = extract_security_name(sec)
+  data = yf.download([sec], period="1y", interval="1d")
+  vol = pd.DataFrame()
+  data["logReturns"] = np.log(data['Close'] / data['Close'].shift(1)).dropna()
+
+  return data["logReturns"].pct_change().std() * np.sqrt(252)
 
 def render_volatility_dashboard():
   with st.form("vol_form"):
@@ -23,18 +34,6 @@ def render_volatility_dashboard():
       key = "spot_price",
       disabled=True
     )
-
-    # interest_rate = st.number_input(
-    #   label = "Risk free rate",
-    #   value = continuous_rate(fetch_interest_rate()),
-    #   key = "risk_free_rate"
-    # )
-
-    # dividend_yield = st.number_input(
-    #   label = "Dividend yield",
-    #   value = continuous_rate(fetch_dividend_yield(st.session_state.stock_ticker)),
-    #   key = "dividend_yield"
-    # )
 
     days = st.number_input(
       label = "Number of Days",
@@ -74,15 +73,8 @@ def render_volatility_dashboard():
     )
 
     # implied_volatility = calculate_implied_volatility(option_data)
+    option_data["impliedVolatility"] = option_data["impliedVolatility"]/100
 
-    IV = option_data["impliedVolatility"]
-    strike = option_data["strike"]
-    ttm = option_data["ttm"]
-
-    # interp = interp2d(x=strike, y=ttm, z=IV, kind="cubic")
-    # strike_interp = np.linspace(strike.min(), strike.max() + 1, 100)
-    # ttm_interp = np.linspace(ttm.min(), ttm.max() + 1, 100)
-    # iv_interp = interp(strike_interp, ttm_interp)
     strike_range = np.linspace(option_data['strike'].min(), option_data['strike'].max(), 100)
     ttm_range = np.linspace(option_data['ttm'].min(), option_data['ttm'].max(), 100)
     strike_grid, ttm_grid = np.meshgrid(strike_range, ttm_range)
@@ -105,7 +97,8 @@ def render_volatility_dashboard():
     scene=dict(
         xaxis_title='Strike',
         yaxis_title='Time to Maturity',
-        zaxis_title='Volatility'
+        zaxis_title='Volatility',
+        zaxis=dict(range=[0, 0.2])
     ),
     title='Surface Plot of Volatility Skew'
   )
@@ -113,19 +106,25 @@ def render_volatility_dashboard():
 
   st.plotly_chart(fig)
 
-  option_data.sort_values(by="strike")
+  od = option_data[["strike", "impliedVolatility"]].groupby("strike").mean()
+  od.reset_index(inplace=True)
   fig = px.scatter(
-    option_data, 
+    od, 
     x = "strike",
     y = "impliedVolatility",
-    title = f"Implied Volatility Over Strike for {st.session_state.stock_ticker}"
+    title = f"Implied Volatility Over Strike for {st.session_state.stock_ticker}",
+
   )
+
 
   fig.update_layout(
     xaxis_title = "Strike",
     yaxis_title = "Implied Volatility",
+    # yaxis=dict(range=[0, 0.024])
   )
   st.plotly_chart(fig)
+
+  st.success(f"The following plots show the volatility skew with respect to Time to maturity and Strike price of the options available in the market, the calculated historical volatility is {calculate_historical_volatility(st.session_state.stock_ticker, st.session_state.days):.3f}")
 
 
 

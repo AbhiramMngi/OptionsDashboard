@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-from utils.utils import extract_security_name, fetch_current_price, fetch_interest_rate, fetch_dividend_yield
+from utils.utils import extract_security_name
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import norm
