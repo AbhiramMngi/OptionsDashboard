@@ -14,7 +14,7 @@ page = st.selectbox(
     "Option Price Dashboard",
     "Volatility Dashboard",
   ),
-  index=0,
+  index=1,
   placeholder="Select Page"
 )
 
