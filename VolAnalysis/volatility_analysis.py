@@ -14,7 +14,7 @@ def calculate_historical_volatility(sec, days):
   sec = extract_security_name(sec)
   data = yf.download([sec], period="1y", interval="1d")
   vol = pd.DataFrame()
-  data["logReturns"] = np.log(data['Close'] / data['Close'].shift(1)).dropna()
+  data["logReturns"] = (data['Close'] / data['Close'].shift(1)).dropna()
 
   return data["logReturns"].pct_change().std() * np.sqrt(252)
 
