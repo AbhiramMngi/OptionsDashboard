@@ -19,7 +19,7 @@ def calc_volatility(sec):
   days = (st.session_state.expiration_date - date.today()).days
   # st.write(format_period(days))
   data = yf.download([sec], period=format_period(days), interval="1d")
-  vol = data["Close"][sec].pct_change().std() * np.sqrt(days)
+  vol = np.log(data["Close"][sec] / data["Close"][sec].shift(1)).std() * np.sqrt(days)
   print("Vol", vol)
   # st.write(vol, data.shape)
   return vol
