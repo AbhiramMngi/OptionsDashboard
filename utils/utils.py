@@ -120,7 +120,7 @@ def fetch_dividend_yield(sec):
     sec = "Apple Inc. (AAPL)"
   sec = extract_security_name(sec)
   data = yf.Ticker(sec)
-  return data.info.get('dividendYield', 0.0)
+  return data.info.get('dividendYield', 0.0) / 100
 
 def continuous_rate(rate):
   return np.log(1 + rate)
