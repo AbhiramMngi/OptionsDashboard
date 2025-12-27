@@ -14,16 +14,42 @@ class MonteCarloAsianOptionPricer:
     avg_start_date = sec_obj.average_start_date
     avg_end_date = sec_obj.average_end_date
     S = sec_obj.spot_price
-    def option_prices(r, sigma, spot, ttm):
+    # Pre-generate random numbers for Common Random Numbers (CRN) technique
+    # We need enough steps for time_to_maturity + 1 (for Theta calculation)
+    max_steps = time_to_maturity + 2
+    Z = np.random.normal(size=(n_simulations, max_steps))
+    
+    def option_prices(r, sigma, spot, ttm, z_matrix=None):
       
-
       n_days = (avg_end_date - avg_start_date).days + 1
       dt = np.array([1/365 for i in range(ttm)])
+      
+      # Use provided Z matrix or generate new one (should always be provided for Greeks)
+      if z_matrix is not None:
+          current_z = z_matrix[:, :ttm]
+      else:
+          current_z = np.random.normal(size=(n_simulations, ttm))
+          
+      # Construct Brownian path
+      # dW = sqrt(dt) * Z
+      # W = cumsum(dW)
+      # But the original code did: cumsum(sqrt(dt) * Z) which is correct for W_t
+      
+      # Note: The original code calculated 'sqrt_time_sum' which seems to be the Brownian Motion W_t
+      # sqrt_time_sum = np.cumsum(np.sqrt(dt) * np.random.normal(...))
+      
+      sqrt_dt = np.sqrt(dt)
+      # Broadcast sqrt_dt to shape of current_z if needed, but here it's 1D array of length ttm
+      # We need to multiply each column j by sqrt_dt[j]
+      
+      dW = current_z * sqrt_dt
+      W_t = np.cumsum(dW, axis=1)
+      
       time_sum = np.cumsum(dt)
-      sqrt_time_sum = np.cumsum(np.sqrt(dt) * np.random.normal(size=(n_simulations, dt.shape[0])), axis = 1)
-      drift = (r - (0.5 * sigma) ** 2) * time_sum
-      vol = (sigma) * sqrt_time_sum
-      print(vol.shape, drift.shape, sqrt_time_sum.shape)
+      
+      drift = (r - 0.5 * sigma ** 2) * time_sum
+      vol = (sigma) * W_t
+      # print(vol.shape, drift.shape, W_t.shape)
       S_t = spot * np.exp(drift + vol)
 
       A_t = S_t[:, (-ttm+ n_days):].mean(axis=1)
@@ -33,30 +59,31 @@ class MonteCarloAsianOptionPricer:
       return C_t, P_t
     
     def greeks(spot):
-      call_old_price, put_old_price = option_prices(rate, sig, spot - 0.01, time_to_maturity)
-      call_price, put_price = option_prices(rate, sig, spot, time_to_maturity)
-      call_new_price, put_new_price = option_prices(rate, sig, spot + 0.01, time_to_maturity)
-      delta_call = (call_price - call_new_price)/(-0.01)
-      delta_put = (put_price - put_new_price)/(-0.01)
-      delta_old_put = (put_old_price - put_price)/ (-0.01)
-      delta_old_call = (call_old_price - call_price)/ (-0.01)
+      # Use the same Z matrix for all price calculations for this spot to ensure smooth Greeks
       
-      gamma = (delta_call - delta_old_call)/(-0.02)
+      call_old_price, put_old_price = option_prices(rate, sig, spot - 0.01, time_to_maturity, Z)
+      call_price, put_price = option_prices(rate, sig, spot, time_to_maturity, Z)
+      call_new_price, put_new_price = option_prices(rate, sig, spot + 0.01, time_to_maturity, Z)
+      
+      delta_call = (call_new_price - call_price)/(0.01)
+      delta_put = (put_new_price - put_price)/(0.01)
+      
+      gamma = (call_new_price - 2*call_price + call_old_price) / (0.01**2)
 
-      call_price, put_price = option_prices(rate, sig, spot, time_to_maturity)
-      call_new_price, put_new_price = option_prices(rate, sig + 0.01, spot, time_to_maturity)
-      vega = (call_new_price - call_price)/(-0.01)
+      # Vega: change in vol. Use same Z.
+      call_vol_up, put_vol_up = option_prices(rate, sig + 0.01, spot, time_to_maturity, Z)
+      vega = (call_vol_up - call_price)/(0.01)
 
-      call_price, put_price = option_prices(rate, sig, spot, time_to_maturity)
-      call_new_price, put_new_price = option_prices(rate, sig, spot, time_to_maturity + 1)
-      theta_call = (call_new_price - call_price)
-      theta_put = (put_new_price - put_price)
+      # Theta: change in time. Use Z (it will slice differently but use same underlying numbers)
+      call_time_up, put_time_up = option_prices(rate, sig, spot, time_to_maturity + 1, Z)
+      theta_call = (call_price - call_time_up)
+      theta_put = (put_price - put_time_up)
 
-      call_price, put_price = option_prices(rate, sig, spot, time_to_maturity)
-      call_new_price, put_new_price = option_prices(rate + 0.01, sig, spot, time_to_maturity)
+      # Rho: change in rate. Use same Z.
+      call_rate_up, put_rate_up = option_prices(rate + 0.01, sig, spot, time_to_maturity, Z)
 
-      rho_call = (call_new_price - call_price) / (-0.01)
-      rho_put = (put_new_price - put_price)/(-0.01)
+      rho_call = (call_rate_up - call_price) / (0.01)
+      rho_put = (put_rate_up - put_price)/(0.01)
 
       return Greeks(
         delta_call/100,
@@ -71,9 +98,12 @@ class MonteCarloAsianOptionPricer:
 
     call_prices, put_prices = [], []
     gre = Greeks([],[],[],[],[],[],[],[])
-    for spot in np.arange(0, S * 2, S/10):
+    
+    spot_prices = np.arange(0, S * 2, S/10)
+    
+    for spot in spot_prices:
 
-      call_price, put_price= option_prices(r=rate, sigma=sig,spot=spot, ttm=time_to_maturity)
+      call_price, put_price= option_prices(r=rate, sigma=sig,spot=spot, ttm=time_to_maturity, z_matrix=Z)
       call_prices.append(call_price)
       put_prices.append(put_price)
 
@@ -89,7 +119,7 @@ class MonteCarloAsianOptionPricer:
 
     return OptionSummary(
       sec_obj.stock_ticker,
-      np.arange(0, S * 2, S/10),
+      spot_prices,
       sec_obj.risk_free_rate,
       sec_obj.volatility,
       sec_obj.time_to_expiration,

@@ -21,6 +21,7 @@ def black_scholes(x, data):
   # st.write(call_price.shape)
   return call_price
 
+@st.cache_data
 def fetch_option_data(sec, spot_price):
   if sec is None:
     sec = "AAPL"
@@ -30,7 +31,7 @@ def fetch_option_data(sec, spot_price):
 
   def fetch_options_data(date):
     data = ticker.option_chain(date)
-    call_data = data.calls[["strike", "lastPrice", "impliedVolatility"]]
+    call_data = data.calls[["strike", "lastPrice", "impliedVolatility"]].copy()
     call_data["expiry_date"] = pd.to_datetime(date)
     return call_data
   
@@ -38,7 +39,7 @@ def fetch_option_data(sec, spot_price):
 
   options_data = pd.concat(fetch_options(expiry_dates), ignore_index=True)
 
-  options_data["ttm"] = (options_data["expiry_date"] - pd.Timestamp(0)).dt.days/365
+  options_data["ttm"] = (options_data["expiry_date"] - pd.Timestamp.now()).dt.days/365
   options_data["spot_price"] = spot_price
   return options_data
 

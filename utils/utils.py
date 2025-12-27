@@ -3,6 +3,7 @@ from datetime import date
 import re
 import yfinance as yf
 import pandas as pd
+import streamlit as st
 
 securities = [i[0] for i in pd.read_csv('securities.csv').values.tolist()]
 
@@ -83,11 +84,15 @@ class PricerInput:
 def extract_security_name(sec):
   return re.match(r'^(.*) \((.*)\)$', sec).group(2)
 
+@st.cache_data
 def calculate_stock_volatility(sec, days):
   sec = extract_security_name(sec)
   data = yf.download([sec], period="5y", interval="1d")
   vol = pd.DataFrame()
-  vol["vol"] = data["Close"].pct_change().rolling(window=days).std()
+  # Use log returns for consistency
+  log_returns = np.log(data["Close"] / data["Close"].shift(1))
+  # Annualize the rolling standard deviation
+  vol["vol"] = log_returns.rolling(window=days).std() * np.sqrt(252)
   vol["date"] = data.index
   return vol
 
@@ -99,6 +104,7 @@ def format_period(days):
   else:
     return "1y"
 
+@st.cache_data
 def fetch_interest_rate():
   treasury_ticker = "^TNX"
 
@@ -108,6 +114,7 @@ def fetch_interest_rate():
   
   return risk_free_rate
 
+@st.cache_data
 def fetch_current_price(sec):
   if sec is None:
     sec = "Apple Inc. (AAPL)"
@@ -115,6 +122,7 @@ def fetch_current_price(sec):
   data = yf.Ticker(sec)
   return data.info['previousClose']
 
+@st.cache_data
 def fetch_dividend_yield(sec):
   if sec is None:
     sec = "Apple Inc. (AAPL)"

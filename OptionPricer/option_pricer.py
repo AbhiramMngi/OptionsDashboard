@@ -13,16 +13,19 @@ from utils.utils import PricerInput, extract_security_name, securities, fetch_cu
 import plotly.express as px
 
 ASIAN = "Asian (Arithmetic Mean)"
-def calc_volatility(sec):
+@st.cache_data
+def calc_volatility(sec, expiry):
   sec = extract_security_name(sec)
   # st.write(st.session_state.expiration_date, sec)
-  days = (st.session_state.expiration_date - date.today()).days
+  days = (expiry - date.today()).days
   # st.write(format_period(days))
   data = yf.download([sec], period=format_period(days), interval="1d")
   vol = np.log(data["Close"][sec] / data["Close"][sec].shift(1)).std() * np.sqrt(days)
   print("Vol", vol)
   # st.write(vol, data.shape)
   return vol
+
+
 
 def format_period(days):
   if days < 30:
@@ -95,7 +98,7 @@ def render_option_dashboard():
       spot_price = st.number_input(
         "Spot Price ($USD)",
         placeholder = "Enter Spot Price",
-        value = fetch_current_price(st.session_state.stock_name)
+        value = fetch_current_price(stock_name)
       )
     with cols[1]:
       strike_price = st.number_input(
@@ -106,7 +109,7 @@ def render_option_dashboard():
         value = spot_price,
         key = "strike_price" 
       )
-    if st.session_state.option_style == ASIAN:
+    if option_style == ASIAN:
       
       average_start_date = st.date_input(
         "Average Start Date",
@@ -118,7 +121,7 @@ def render_option_dashboard():
       min_value = 0.0,
       max_value = 100.0,
       step = 1.0,
-      value = fetch_dividend_yield(st.session_state.stock_name) * 100,
+      value = fetch_dividend_yield(stock_name) * 100,
       key = "dividend_yield"
     )
 
@@ -136,7 +139,7 @@ def render_option_dashboard():
       min_value = 0.0,
       max_value = 100.0,
       step = 0.01,
-      value = calc_volatility(st.session_state.stock_name) * 100,
+      value = calc_volatility(stock_name, expiration_date) * 100,
       key = "volatility",
     )
 
@@ -147,11 +150,11 @@ def render_option_dashboard():
     
   if submit or st.session_state.flag:
     st.session_state.flag = False
-    if st.session_state.option_style == "European":
+    if option_style == "European":
       pricer = BlackScholesPricer()
-    if st.session_state.option_style == "American":
+    if option_style == "American":
       pricer = BinomialAmericanOptionPricer()
-    if st.session_state.option_style == ASIAN:
+    if option_style == ASIAN:
       pricer = MonteCarloAsianOptionPricer()
 
     

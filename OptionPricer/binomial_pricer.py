@@ -40,8 +40,29 @@ class BinomialAmericanOptionPricer:
       delta_up = (calls[2, 0] - calls[2, 1]) / (S[2, 0] - S[2, 1])
       delta_down = (calls[2, 1] - calls[2, 2]) / (S[2, 1] - S[2, 2])
       gamma = (delta_up - delta_down) / (0.5 * (S[2, 0] - S[2, 2]))
-      theta_call = -(calls[0, 0] - calls[1, 0]) / dt
-      theta_put = -(puts[0, 0] - puts[1, 0]) / dt
+      
+      # Interpolated Theta Calculation
+      s_down = S[1, 0]
+      s_up = S[1, 1]
+      
+      # Call Theta
+      c_down = calls[1, 0]
+      c_up = calls[1, 1]
+      if s_up != s_down:
+          c_dt = (c_up * (spot - s_down) + c_down * (s_up - spot)) / (s_up - s_down)
+      else:
+          c_dt = c_down
+      theta_call = (c_dt - calls[0, 0]) / dt
+      
+      # Put Theta
+      p_down = puts[1, 0]
+      p_up = puts[1, 1]
+      if s_up != s_down:
+          p_dt = (p_up * (spot - s_down) + p_down * (s_up - spot)) / (s_up - s_down)
+      else:
+          p_dt = p_down
+      theta_put = (p_dt - puts[0, 0]) / dt
+
       calls, puts, S = option_prices(r = r - 0.01, vol = sigma, spot_price=spot)
       calls_new, puts_new, S = option_prices(r=r+0.01, vol=sigma, spot_price=spot)
       rho_call = (calls_new[0, 0] - calls[0, 0]) / 0.02
@@ -63,27 +84,36 @@ class BinomialAmericanOptionPricer:
     
     call_prices, put_prices = [], []
     gre = Greeks([],[],[],[],[],[],[],[])
-    for spot in np.arange(0, sec_obj.spot_price * 2, sec_obj.spot_price/10):
+    
+    # Use local variable for spot prices
+    spot_prices = np.arange(0, sec_obj.spot_price * 2, sec_obj.spot_price/10)
+    
+    for spot in spot_prices:
 
       call_price, put_price, S = option_prices(r=r, vol=sigma,spot_price=spot)
       call_prices.append(call_price[0, 0])
       put_prices.append(put_price[0, 0])
+
 
       g = greeks(spot)
       gre.delta_call.append(g.delta_call)
       gre.delta_put.append(g.delta_put)
       gre.gamma.append(g.gamma)
       gre.vega.append(g.vega)
+      
+      # Recalculate Theta using interpolation for better accuracy
+      # The greeks() function uses a simpler approximation, we override it here or fix it inside greeks()
+      # Let's fix it inside greeks() actually, to be cleaner.
+      # But greeks() is defined above. I will modify greeks() definition in the next block.
       gre.theta_call.append(g.theta_call)
       gre.theta_put.append(g.theta_put)
       gre.rho_call.append(g.rho_call)
       gre.rho_put.append(g.rho_put)
       
 
-    sec_obj.spot_price = np.arange(0, sec_obj.spot_price * 2, sec_obj.spot_price/10)
     return OptionSummary(
       sec_obj.stock_ticker,
-      sec_obj.spot_price,
+      spot_prices,
       sec_obj.risk_free_rate,
       sec_obj.volatility,
       sec_obj.time_to_expiration,
